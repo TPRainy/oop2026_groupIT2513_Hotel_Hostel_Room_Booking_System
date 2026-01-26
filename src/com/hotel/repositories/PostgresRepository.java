@@ -157,7 +157,6 @@ public class PostgresRepository implements GuestRepository, RoomRepository, Rese
     @Override
     public List<Room> findAvailableByDates(LocalDate start, LocalDate end) {
         List<Room> rooms = new ArrayList<>();
-        // SQL находит комнаты, которые не имеют броней, перекрывающих выбранные даты
         String sql = "SELECT * FROM rooms WHERE id NOT IN (" +
                 "SELECT room_id FROM reservations " +
                 "WHERE NOT (check_out <= ? OR check_in >= ?))";
