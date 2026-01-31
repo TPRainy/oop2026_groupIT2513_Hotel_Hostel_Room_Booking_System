@@ -39,18 +39,15 @@ public class ReservationService {
 
     public int createReservation(int guestId, int roomId, LocalDate checkIn, LocalDate checkOut, String option) {
         validateDates(checkIn, checkOut);
+
         Guest guest = guestRepo.getGuestById(guestId);
         Room room = roomRepo.getRoomById(roomId);
-        SeasonCalendar calendar=SeasonCalendar.getInstance();
+        SeasonCalendar calendar = SeasonCalendar.getInstance();
 
         if (!availabilityService.isRoomAvailable(roomId)) {
             throw new RoomNotAvailableException("Room " + roomId + " is occupied!");
         }
 
-        Guest guest = guestRepo.getGuestById(guestId);
-        Room room = roomRepo.getRoomById(roomId);
-
-        SeasonCalendar calendar = SeasonCalendar.getInstance();
 
         double basePrice = room.getPricePerNight();
         if (calendar.isHighSeason(checkIn)) {

@@ -79,7 +79,6 @@ public class ConsoleUI {
                     System.out.println("No available rooms");
                 } else{
                     System.out.println("Available rooms: ");
-                    // --- ЛЯМБДА ВЫРАЖЕНИЕ (Требование Milestone 2) ---
                     rooms.forEach(r -> System.out.println(
                             "ID:" + r.getId() +
                                     " | Number: " + r.getRoomNumber() +
@@ -131,7 +130,6 @@ public class ConsoleUI {
                 else if (optChoice==3) selectedOption="WiFi connection";
                 else if (optChoice==4) selectedOption="All inclusive";
 
-                // Передаем selectedOption в сервис
                 int bookingId=resService.createReservation(savedGuest.getId(), roomId, check_In, check_Out, selectedOption);
 
                 System.out.println("Reservation made successfully");
