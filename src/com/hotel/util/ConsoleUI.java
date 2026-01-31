@@ -2,6 +2,7 @@ package com.hotel.util;
 
 import com.hotel.model.Guest;
 import com.hotel.model.Reservation;
+import com.hotel.model.ReservationDetails;
 import com.hotel.model.Room;
 import com.hotel.services.*;
 import com.hotel.repositories.PostgresRepository;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class ConsoleUI {
-    private final ReservationService resService;
+    private ReservationService resService;
     private final PaymentService paymentService;
     private final RoomAvailabilityService availabilityService;
     private final PostgresRepository repo;
@@ -68,9 +69,9 @@ public class ConsoleUI {
     private void handleChoice(int choice){
         switch (choice){
             case 1:
-                System.out.println("Date of check in: ");
+                System.out.println("Date of check in (YYYY-MM-DD): ");
                 LocalDate checkIn=LocalDate.parse(scanner.nextLine());
-                System.out.println("Date of check out: ");
+                System.out.println("Date of check out (YYYY-MM-DD): ");
                 LocalDate checkOut=LocalDate.parse(scanner.nextLine());
 
                 List<Room> rooms= availabilityService.getAvailableRooms(checkIn,checkOut);
@@ -78,13 +79,17 @@ public class ConsoleUI {
                     System.out.println("No available rooms");
                 } else{
                     System.out.println("Available rooms: ");
-                    for (Room r: rooms){
-                        System.out.println("ID:"+r.getId()+" Number: "+r.getRoomNumber()+" Type of room: "+r.getType()+" Price: "+r.getPricePerNight());
-                    }
+                    // --- ЛЯМБДА ВЫРАЖЕНИЕ (Требование Milestone 2) ---
+                    rooms.forEach(r -> System.out.println(
+                            "ID:" + r.getId() +
+                                    " | Number: " + r.getRoomNumber() +
+                                    " | Type: " + r.getType() +
+                                    " | Price: " + r.getPricePerNight()
+                    ));
                 } break;
             case 2:
                 System.out.println("\n====Reservation of room====");
-                System.out.println("Your choice of room: ");
+                System.out.println("Your choice of room ID: ");
                 int roomId=readInt();
 
                 if (!availabilityService.isRoomAvailable(roomId)){
@@ -105,17 +110,29 @@ public class ConsoleUI {
                 Guest savedGuest=repo.saveGuest(newGuest);
 
                 if (savedGuest==null){
-                    System.out.println("Error");
+                    System.out.println("Error saving guest");
                     break;
                 }
                 System.out.println("Successfully registered guest. Guest ID: "+ savedGuest.getId());
 
-                System.out.println("How long do plan to stay?");
+                System.out.println("How many days do you plan to stay?");
                 int days=readInt();
                 LocalDate check_In=LocalDate.now();
                 LocalDate check_Out=check_In.plusDays(days);
 
-                int bookingId=resService.createReservation(savedGuest.getId(),roomId,check_In,check_Out);
+                System.out.println("Do you need extra options?" +
+                        "\n1.No" +
+                        "\n2.Breakfast in room (+3000)" +
+                        "\n3.WiFi connection (+1000)" +
+                        "\n4.All inclusive (+4000)");
+                int optChoice=readInt();
+                String selectedOption="None";
+                if (optChoice==2) selectedOption="Breakfast in room";
+                else if (optChoice==3) selectedOption="WiFi connection";
+                else if (optChoice==4) selectedOption="All inclusive";
+
+                // Передаем selectedOption в сервис
+                int bookingId=resService.createReservation(savedGuest.getId(), roomId, check_In, check_Out, selectedOption);
 
                 System.out.println("Reservation made successfully");
                 System.out.println("Reservation number: "+bookingId+" for guest: "+ savedGuest.getFirstName());
@@ -126,20 +143,23 @@ public class ConsoleUI {
                 if (paymentService.payReservation(payId)){
                     System.out.println("Successfully paid");
                 } else {
-                    System.out.println("Already paid");
+                    System.out.println("Already paid or not found");
                 } break;
             case 4:
                 System.out.println("Id of reservation: ");
                 int resId=readInt();
-                Reservation res=repo.getReservationById(resId);
-                if (res!=null){
-                    System.out.println("===Status of reservation===");
-                    System.out.println("Guest: "+res.getGuest().getFirstName());
-                    System.out.println("Status: "+(res.isPaid()?"PAID":"NOT PAID"));
-                } else {
-                    System.out.println("Not found");
-                }
-                break;
+                try{
+                    ReservationDetails details=resService.getFullReservationDetails(resId);
+                    System.out.println("\n=== Status of reservation ===");
+                    System.out.println("Room: "+details.getRoom().getRoomNumber());
+                    System.out.println("Type: "+details.getRoom().getType());
+                    System.out.println("Options: "+details.getOptions());
+                    System.out.println("Final Price: "+details.getFinalPrice());
+                    System.out.println("Status: "+details.getPaymentStatus());
+                    System.out.println("------------------------------------------");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                } break;
             case 5:
                 System.out.println("Write Id of your reservation: ");
                 int idCancel=readInt();
@@ -149,4 +169,3 @@ public class ConsoleUI {
         }
     }
 }
-

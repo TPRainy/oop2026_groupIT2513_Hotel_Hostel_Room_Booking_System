@@ -5,6 +5,10 @@ import com.hotel.repositories.GuestRepository;
 import com.hotel.repositories.ReservationRepository;
 import com.hotel.repositories.RoomRepository;
 import com.hotel.exceptions.*;
+import com.hotel.util.SeasonCalendar;
+import com.hotel.notifications.Notification;
+import com.hotel.notifications.NotificationFactory;
+
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
@@ -19,7 +23,7 @@ public class ReservationService {
         this.guestRepo = guestRepo;
         this.roomRepo = roomRepo;
         this.reservationRepo = reservationRepo;
-        this.availabilityService=availabilityService;
+        this.availabilityService = availabilityService;
     }
 
     public void cancelReservation(int reservationId) {
@@ -33,7 +37,7 @@ public class ReservationService {
         reservationRepo.deleteReservation(reservationId);
     }
 
-    public int createReservation(int guestId, int roomId, LocalDate checkIn, LocalDate checkOut) {
+    public int createReservation(int guestId, int roomId, LocalDate checkIn, LocalDate checkOut, String option) {
         validateDates(checkIn, checkOut);
 
         if (!availabilityService.isRoomAvailable(roomId)) {
@@ -43,17 +47,50 @@ public class ReservationService {
         Guest guest = guestRepo.getGuestById(guestId);
         Room room = roomRepo.getRoomById(roomId);
 
+        SeasonCalendar calendar = SeasonCalendar.getInstance();
+
+        double basePrice = room.getPricePerNight();
+        if (calendar.isHighSeason(checkIn)) {
+            basePrice *= 1.5;
+        }
+
         long days = ChronoUnit.DAYS.between(checkIn, checkOut);
         if (days <= 0) days = 1;
-        double totalPrice = days * room.getPricePerNight();
+
+        double optionCharge = 0;
+        if ("All inclusive".equals(option)) {
+            optionCharge = 4000;
+        } else if ("Breakfast in room".equals(option)) {
+            optionCharge = 3000;
+        } else if ("WiFi connection".equals(option)) {
+            optionCharge = 1000;
+        }
+
+        double pricePerNightWithOption = basePrice + optionCharge;
+        double totalPrice = days * pricePerNightWithOption;
 
         room.setAvailable(false);
         roomRepo.updateRoom(room);
 
-        Reservation reservation = new Reservation(0, guest, room, checkIn, checkOut, totalPrice);
+        Reservation reservation = new Reservation(0, guest, room, checkIn, checkOut, totalPrice, option);
         reservationRepo.saveReservation(reservation);
 
+        String notifType = (option != null && option.contains("WiFi")) ? "EMAIL" : "SMS";
+
+        Notification notification = NotificationFactory.createNotification(notifType);
+
+        notification.send("Dear " + guest.getFirstName() + ", your booking #" + reservation.getId() + " is confirmed! Total: " + totalPrice);
+
         return reservation.getId();
+    }
+
+    public ReservationDetails getFullReservationDetails(int reservationId){
+        Reservation res = reservationRepo.getReservationById(reservationId);
+        return new ReservationDetails.Builder()
+                .setRoom(res.getRoom())
+                .setPaymentinfo(res.isPaid() ? "Paid" : "Pending", res.getTotal())
+                .addOption(res.getOptions())
+                .build();
     }
 
     private void validateDates(LocalDate checkIn, LocalDate checkOut) {
