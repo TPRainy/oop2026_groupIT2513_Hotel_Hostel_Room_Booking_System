@@ -26,7 +26,7 @@ public class SeasonCalendar {
     }
 
     public boolean isHighSeason(LocalDate date){
-        int month = date.getMonthValue();
-        return holidays.contains(date) || (month >= 6 && month <= 8);
+        int month=date.getMonthValue();
+        return holidays.contains(date)||(month>=6&&month<=8);
     }
 }
