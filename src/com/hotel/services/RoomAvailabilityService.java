@@ -28,6 +28,9 @@ public class RoomAvailabilityService {
             throw new RuntimeException("Date of check out can't be before check in");
         }
         SearchResult<Room> result=roomRepo.findAvailableByDates(checkIn,checkOut);
-        return result.getData();
+        List<Room> rooms = result.getData();
+
+        rooms.sort((r1,r2)-> Double.compare(r1.getPricePerNight(),r2.getPricePerNight()));
+        return rooms;
     }
 }
