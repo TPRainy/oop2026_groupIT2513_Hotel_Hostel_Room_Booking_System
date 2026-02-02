@@ -13,7 +13,6 @@ public class SearchResult<T> {
         this.success = success;
     }
 
-    // Геттеры
     public List<T> getData() { return data; }
     public String getMessage() { return message; }
     public boolean isSuccess() { return success; }
